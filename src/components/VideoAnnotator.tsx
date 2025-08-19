@@ -1,267 +1,206 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Annotation, Point, Stroke, TextNote } from '../types';
-import { uid, simplify, clamp } from '../utils';
+import React, { useRef, useState, useEffect } from "react";
+import { Annotation, Stroke, TextNote, ExportPayload } from "../types";
+import { uid, simplify, clamp } from "../utils";
+import Timeline from "./Timeline";
 
-const DEFAULT_COLOR = '#ffdd00';
-const DEFAULT_WIDTH = 3;
-
-export default function VideoAnnotator(){
-  const videoRef = useRef<HTMLVideoElement|null>(null);
-  const canvasRef = useRef<HTMLCanvasElement|null>(null);
-  const fileInputRef = useRef<HTMLInputElement|null>(null);
+export default function VideoAnnotator() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [mode, setMode] = useState<'none'|'draw'|'text'>('none');
+  const [mode, setMode] = useState<"none" | "draw" | "text">("none");
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
-  const [color, setColor] = useState(DEFAULT_COLOR);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [playing, setPlaying] = useState(false);
+  const [color, setColor] = useState("#ffdd00");
+  const [width, setWidth] = useState(3);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
-  // sync canvas size with video
-  useEffect(()=> {
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.addEventListener("timeupdate", () => setCurrentTime(v.currentTime));
+    v.addEventListener("loadedmetadata", () => setDuration(v.duration));
+  }, []);
+
+  useEffect(() => {
+    render();
+  }, [annotations, currentTime, currentStroke]);
+
+  function render() {
     const v = videoRef.current;
     const c = canvasRef.current;
-    if(!v || !c) return;
-    function resize(){
-      c.width = v.clientWidth;
-      c.height = v.clientHeight;
-      render();
-    }
-    window.addEventListener('resize', resize);
-    v.addEventListener('loadedmetadata', resize);
-    resize();
-    return ()=> {
-      window.removeEventListener('resize', resize);
-      v.removeEventListener('loadedmetadata', resize);
-    };
-  }, [annotations]);
-
-  // render overlay on timeupdate or changes
-  useEffect(()=> {
-    const v = videoRef.current;
-    if(!v) return;
-    const onTime = () => render();
-    v.addEventListener('timeupdate', onTime);
-    v.addEventListener('play', ()=> setPlaying(true));
-    v.addEventListener('pause', ()=> setPlaying(false));
-    return ()=> v.removeEventListener('timeupdate', onTime);
-  }, [annotations, currentStroke]);
-
-  function render(){
-    const v = videoRef.current;
-    const c = canvasRef.current;
-    if(!v || !c) return;
-    const ctx = c.getContext('2d')!;
-    ctx.clearRect(0,0,c.width,c.height);
+    if (!v || !c) return;
+    const ctx = c.getContext("2d")!;
+    c.width = v.clientWidth;
+    c.height = v.clientHeight;
+    ctx.clearRect(0, 0, c.width, c.height);
     const t = v.currentTime;
-    const w = c.width, h = c.height;
 
-    // draw annotations if timestamp is within window (show instant annotations when close)
-    for(const a of annotations){
-      if(a.type === 'stroke'){
-        const s = a as Stroke;
-        if(Math.abs(s.timestamp - t) > 2) continue;
+    annotations.forEach((a) => {
+      if (t < a.timestamp || t > a.timestamp + a.duration) return;
+      if (a.type === "stroke") {
         ctx.beginPath();
-        ctx.lineWidth = s.width;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = s.color;
-        const pts = s.points;
-        if(!pts.length) continue;
-        ctx.moveTo(pts[0].x * w, pts[0].y * h);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x * w, pts[i].y * h);
+        ctx.lineWidth = a.width;
+        ctx.strokeStyle = a.color;
+        const pts = a.points;
+        ctx.moveTo(pts[0].x * c.width, pts[0].y * c.height);
+        pts.slice(1).forEach((p) => ctx.lineTo(p.x * c.width, p.y * c.height));
         ctx.stroke();
       } else {
-        const n = a as TextNote;
-        if(Math.abs(n.timestamp - t) > 2) continue;
-        ctx.font = '18px sans-serif';
-        ctx.fillStyle = n.color;
-        ctx.fillText(n.text, n.x * w, n.y * h);
+        ctx.fillStyle = a.color;
+        ctx.font = "18px sans-serif";
+        ctx.fillText(a.text, a.x * c.width, a.y * c.height);
       }
-    }
+    });
 
-    // draw live stroke
-    if(currentStroke){
+    if (currentStroke) {
       ctx.beginPath();
       ctx.lineWidth = currentStroke.width;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
       ctx.strokeStyle = currentStroke.color;
       const pts = currentStroke.points;
-      if(pts.length>0){
-        ctx.moveTo(pts[0].x * w, pts[0].y * h);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x * w, pts[i].y * h);
-        ctx.stroke();
-      }
+      ctx.moveTo(pts[0].x * c.width, pts[0].y * c.height);
+      pts.slice(1).forEach((p) => ctx.lineTo(p.x * c.width, p.y * c.height));
+      ctx.stroke();
     }
   }
 
-  function handleFileSelect() {
-    fileInputRef.current?.click();
-  }
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if(!f) return;
+    if (!f) return;
     const url = URL.createObjectURL(f);
-    const v = videoRef.current!;
-    v.src = url;
-    v.load();
+    videoRef.current!.src = url;
     setAnnotations([]);
   }
 
-  // pointer drawing
-  function toNorm(pt: {x:number;y:number}) {
-    const c = canvasRef.current!;
-    return { x: clamp(pt.x / c.width), y: clamp(pt.y / c.height) };
+  function norm(e: React.PointerEvent) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return {
+      x: clamp((e.clientX - rect.left) / rect.width),
+      y: clamp((e.clientY - rect.top) / rect.height),
+    };
   }
 
-  function onPointerDown(e: React.PointerEvent){
-    if(mode !== 'draw') return;
-    const v = videoRef.current!;
-    if(!v) return;
-    const rect = (e.target as Element).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const p = toNorm({x,y});
-    const stroke: Stroke = {
-      id: uid('s'),
-      type: 'stroke',
-      timestamp: v.currentTime,
+  function down(e: React.PointerEvent) {
+    if (mode !== "draw") return;
+    const p = norm(e);
+    const s: Stroke = {
+      id: uid("s"),
+      type: "stroke",
+      timestamp: videoRef.current!.currentTime,
+      duration: 2,
       points: [p],
       color,
-      width
+      width,
     };
-    setCurrentStroke(stroke);
+    setCurrentStroke(s);
   }
-
-  function onPointerMove(e: React.PointerEvent){
-    if(!currentStroke) return;
-    const rect = (e.target as Element).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const p = toNorm({x,y});
-    setCurrentStroke((s)=>{
-      if(!s) return s;
-      return {...s, points: [...s.points, p]};
-    });
+  function move(e: React.PointerEvent) {
+    if (!currentStroke) return;
+    setCurrentStroke((s) => (s ? { ...s, points: [...s.points, norm(e)] } : s));
   }
-
-  function onPointerUp(){
-    if(!currentStroke) return;
-    // simplify points then commit
-    const simple = simplify(currentStroke.points, 0.003);
-    const committed = {...currentStroke, points: simple};
-    setAnnotations((a)=>[...a, committed]);
+  function up() {
+    if (!currentStroke) return;
+    const simp = simplify(currentStroke.points, 0.003);
+    setAnnotations((a) => [...a, { ...currentStroke, points: simp }]);
     setCurrentStroke(null);
   }
 
-  // add text note
-  function addTextNote(){
-    const text = prompt('Text note:');
-    if(!text) return;
-    const v = videoRef.current!;
-    // default top-left anchor
-    const x = 0.05, y = 0.1;
+  function addText() {
+    const txt = prompt("Enter text");
+    if (!txt) return;
     const note: TextNote = {
-      id: uid('t'),
-      type: 'text',
-      timestamp: v.currentTime,
-      x, y, text, color
+      id: uid("t"),
+      type: "text",
+      timestamp: videoRef.current!.currentTime,
+      duration: 2,
+      x: 0.5,
+      y: 0.1,
+      text: txt,
+      color,
     };
-    setAnnotations((a)=>[...a, note]);
+    setAnnotations((a) => [...a, note]);
   }
 
-  function jumpTo(annotation: Annotation){
-    const v = videoRef.current!;
-    v.currentTime = annotation.timestamp;
-    v.pause();
-    render();
-  }
-
-  function exportJSON(){
-    const payload = {
+  function exportJSON() {
+    const payload: ExportPayload = {
       createdAt: new Date().toISOString(),
-      videoUrl: (videoRef.current?.src) || null,
-      annotations
+      videoUrl: videoRef.current?.src || null,
+      annotations,
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `annotations-${Date.now()}.json`;
+    a.download = "annotations.json";
     a.click();
-    URL.revokeObjectURL(url);
   }
 
-  function clearAll(){ setAnnotations([]); }
+  function importJSON(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    f.text().then((txt) => {
+      const data: ExportPayload = JSON.parse(txt);
+      setAnnotations(data.annotations);
+    });
+  }
 
   return (
-    <div style={{display:'flex',gap:12}}>
-      <div style={{flex:1}}>
-        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
-          <button onClick={handleFileSelect}>Load Video</button>
-          <input ref={fileInputRef} type="file" accept="video/*" style={{display:'none'}} onChange={onFileChange}/>
-          <button onClick={()=> setMode(mode==='draw'?'none':'draw')}>{mode==='draw'?'Stop Drawing':'Draw'}</button>
-          <button onClick={()=> setMode('text')}>Add Text</button>
-          <button onClick={()=> { videoRef.current?.play(); setPlaying(true); }}>Play</button>
-          <button onClick={()=> { videoRef.current?.pause(); setPlaying(false); }}>Pause</button>
-          <label style={{display:'flex',alignItems:'center',gap:6}}>
-            Color
-            <input type="color" value={color} onChange={e=>setColor(e.target.value)} />
-          </label>
-          <label style={{display:'flex',alignItems:'center',gap:6}}>
-            Width
-            <input type="range" min={1} max={20} value={width} onChange={e=>setWidth(Number(e.target.value))} />
-          </label>
-          <button onClick={exportJSON}>Export JSON</button>
-          <button onClick={clearAll}>Clear</button>
+    <div style={{ display: "flex", gap: 12 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <button onClick={() => fileInputRef.current?.click()}>Load Video</button>
+          <input ref={fileInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={handleFileChange} />
+          <button onClick={() => setMode(mode === "draw" ? "none" : "draw")}>Draw</button>
+          <button onClick={addText}>Add Text</button>
+          <button onClick={exportJSON}>Export</button>
+          <button onClick={() => importInputRef.current?.click()}>Import</button>
+          <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importJSON} />
         </div>
 
-        <div style={{position:'relative', width: '100%', maxWidth: 1000, background:'#000'}}>
-          <video
-            ref={videoRef}
-            controls
-            style={{width:'100%', display:'block'}}
-            crossOrigin="anonymous"
-            playsInline
-          />
+        <div style={{ position: "relative", background: "#000", borderRadius: 8, overflow: "hidden" }}>
+          <video ref={videoRef} controls style={{ width: "100%", display: "block" }} />
           <canvas
             ref={canvasRef}
-            style={{position:'absolute', left:0, top:0, right:0, bottom:0, width:'100%', height:'100%', touchAction:'none'}}
-            onPointerDown={(e)=> {
-              if(mode === 'text'){ addTextNote(); setMode('none'); return; }
-              onPointerDown(e);
-            }}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            style={{ position: "absolute", inset: 0 }}
+            onPointerDown={down}
+            onPointerMove={move}
+            onPointerUp={up}
           />
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <Timeline duration={duration} current={currentTime} annotations={annotations} onSeek={(t) => (videoRef.current!.currentTime = t)} />
         </div>
       </div>
 
-      <div style={{width:300}}>
-        <div style={{marginBottom:8}}>Annotations ({annotations.length})</div>
-        <div style={{maxHeight:520, overflow:'auto', border:'1px solid #ddd', padding:6}}>
-          {annotations.slice().reverse().map(a => (
-            <div key={a.id} style={{padding:6,borderBottom:'1px solid #eee', cursor:'pointer'}}>
-              <div style={{fontSize:12}}>
-                <strong>{a.type}</strong> @ {a.timestamp.toFixed(2)}s
-              </div>
-              {'points' in a ? (
-                <div style={{fontSize:12}}>points: {a.points.length} color: {a.color}</div>
-              ) : (
-                <div style={{fontSize:12}}>text: {(a as any).text}</div>
-              )}
-              <div style={{marginTop:6}}>
-                <button onClick={()=> jumpTo(a)}>Go</button>
-                <button onClick={()=>{
-                  setAnnotations(prev => prev.filter(x => x.id !== a.id));
-                }}>Delete</button>
-              </div>
+      <div className="annotation-list">
+        {annotations.map((a) => (
+          <div key={a.id} style={{ marginBottom: 6 }}>
+            <div>{a.type} @ {a.timestamp.toFixed(1)}s</div>
+            {a.type === "text" && <div>"{(a as TextNote).text}"</div>}
+            <div>
+              Duration:
+              <input
+                type="number"
+                min={0.1}
+                step={0.5}
+                value={a.duration}
+                onChange={(e) =>
+                  setAnnotations((anns) =>
+                    anns.map((x) => (x.id === a.id ? { ...x, duration: parseFloat(e.target.value) } : x))
+                  )
+                }
+              />
+              s
             </div>
-          ))}
-        </div>
+            <button onClick={() => (videoRef.current!.currentTime = a.timestamp)}>Go</button>
+            <button onClick={() => setAnnotations((anns) => anns.filter((x) => x.id !== a.id))}>Delete</button>
+          </div>
+        ))}
       </div>
     </div>
   );

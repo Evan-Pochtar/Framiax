@@ -1,21 +1,30 @@
 export type Point = { x: number; y: number };
+
 export type Stroke = {
   id: string;
-  type: 'stroke';
+  type: "stroke";
   timestamp: number;
-  points: Point[]; // normalized 0..1
+  duration: number;
+  points: Point[];
   color: string;
   width: number;
-  author?: string;
 };
+
 export type TextNote = {
   id: string;
-  type: 'text';
+  type: "text";
   timestamp: number;
-  x: number; // normalized
-  y: number; // normalized
+  duration: number;
+  x: number;
+  y: number;
   text: string;
   color: string;
-  author?: string;
 };
+
 export type Annotation = Stroke | TextNote;
+
+export type ExportPayload = {
+  createdAt: string;
+  videoUrl: string | null;
+  annotations: Annotation[];
+};

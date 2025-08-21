@@ -19,6 +19,7 @@ export type TextNote = {
   y: number;
   text: string;
   color: string;
+  fontSize?: number;
 };
 
 export type Annotation = Stroke | TextNote;

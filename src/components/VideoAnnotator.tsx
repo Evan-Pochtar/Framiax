@@ -66,6 +66,8 @@ export default function VideoAnnotator() {
         ctx.beginPath();
         ctx.lineWidth = a.width + (isSelected ? 2 : 0);
         ctx.strokeStyle = isSelected ? "#ff6b6b" : a.color;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
         const pts = a.points;
         ctx.moveTo(pts[0].x * c.width, pts[0].y * c.height);
         pts.slice(1).forEach((p) => ctx.lineTo(p.x * c.width, p.y * c.height));
@@ -98,6 +100,8 @@ export default function VideoAnnotator() {
       ctx.beginPath();
       ctx.lineWidth = currentStroke.width;
       ctx.strokeStyle = currentStroke.color;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
       const pts = currentStroke.points;
       ctx.moveTo(pts[0].x * c.width, pts[0].y * c.height);
       pts.slice(1).forEach((p) => ctx.lineTo(p.x * c.width, p.y * c.height));

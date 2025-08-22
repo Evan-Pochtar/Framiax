@@ -68,6 +68,7 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
                 opacity: 0.7,
                 borderRadius: "10px",
                 border: "1px solid rgba(255,255,255,0.3)",
+                zIndex: 2,
               }}
               title={`${a.type} at ${a.timestamp.toFixed(1)}s`}
             />
@@ -85,6 +86,7 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
             background: "linear-gradient(90deg, var(--accent), #00bcd4)",
             borderRadius: "16px",
             transition: "width 0.1s ease",
+            zIndex: 1,
           }}
         />
         

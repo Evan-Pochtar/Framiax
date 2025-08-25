@@ -16,12 +16,10 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Show preview time on hover
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     const previewTime = duration * ratio;
     
-    // Update tooltip position (handled via CSS)
     e.currentTarget.style.setProperty('--preview-time', `"${Math.floor(previewTime / 60)}:${(previewTime % 60).toFixed(1).padStart(4, '0')}"`);
     e.currentTarget.style.setProperty('--preview-left', `${e.clientX - rect.left}px`);
   };

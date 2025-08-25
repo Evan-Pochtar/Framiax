@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Annotation, Stroke, TextNote, ExportPayload } from "../types";
 import { uid, simplify, clamp } from "../utils";
 import Timeline from "./Timeline";
+import SettingsMenu from "./SettingsMenu";
 
 export default function VideoAnnotator() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -20,6 +21,8 @@ export default function VideoAnnotator() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -30,18 +33,50 @@ export default function VideoAnnotator() {
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     
+    v.volume = volume;
+    v.muted = muted;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target !== document.body) return;
+      
+      switch (e.key.toLowerCase()) {
+        case 'arrowup':
+          e.preventDefault();
+          setVolume(prev => Math.min(1, prev + 0.1));
+          break;
+        case 'arrowdown':
+          e.preventDefault();
+          setVolume(prev => Math.max(0, prev - 0.1));
+          break;
+        case 'm':
+          e.preventDefault();
+          setMuted(prev => !prev);
+          break;
+      }
+    };
+    
     v.addEventListener("timeupdate", handleTimeUpdate);
     v.addEventListener("loadedmetadata", handleLoadedMetadata);
     v.addEventListener("play", handlePlay);
     v.addEventListener("pause", handlePause);
+    document.addEventListener("keydown", handleKeyDown);
     
     return () => {
       v.removeEventListener("timeupdate", handleTimeUpdate);
       v.removeEventListener("loadedmetadata", handleLoadedMetadata);
       v.removeEventListener("play", handlePlay);
       v.removeEventListener("pause", handlePause);
+      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [volume, muted]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) {
+      v.volume = volume;
+      v.muted = muted;
+    }
+  }, [volume, muted]);
 
   useEffect(() => {
     render();
@@ -78,7 +113,6 @@ export default function VideoAnnotator() {
         ctx.font = `${textAnnotation.fontSize || fontSize}px sans-serif`;
         ctx.fillText(textAnnotation.text, a.x * c.width, a.y * c.height);
         
-        // Show bounding box for selected text
         if (isSelected) {
           const metrics = ctx.measureText(textAnnotation.text);
           const textHeight = textAnnotation.fontSize || fontSize;
@@ -141,7 +175,6 @@ export default function VideoAnnotator() {
     const t = videoRef.current!.currentTime;
     const c = canvasRef.current!;
     
-    // Check text annotations first (easier to hit)
     for (const a of annotations.slice().reverse()) {
       if (t < a.timestamp || t > a.timestamp + a.duration) continue;
       if (a.type === "text") {
@@ -167,8 +200,7 @@ export default function VideoAnnotator() {
 
   function down(e: React.PointerEvent) {
     const p = norm(e);
-    
-    // Check if clicking on an existing annotation
+
     const hitAnnotation = findAnnotationAt(p);
     if (hitAnnotation && mode === "none") {
       setSelectedAnnotation(hitAnnotation);
@@ -198,7 +230,6 @@ export default function VideoAnnotator() {
   function move(e: React.PointerEvent) {
     const p = norm(e);
     
-    // Handle dragging selected text annotation
     if (selectedAnnotation && dragOffset && mode === "none") {
       setAnnotations(anns => 
         anns.map(a => 
@@ -365,6 +396,13 @@ export default function VideoAnnotator() {
           <button onClick={exportJSON}>💾 Export</button>
           <button onClick={() => importInputRef.current?.click()}>📁 Import</button>
           <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importJSON} />
+          
+          <SettingsMenu
+            volume={volume}
+            onVolumeChange={setVolume}
+            muted={muted}
+            onMuteToggle={() => setMuted(prev => !prev)}
+          />
         </div>
 
         {/* Selected Annotation Controls */}
@@ -408,7 +446,7 @@ export default function VideoAnnotator() {
               onClick={() => setSelectedAnnotation(null)} 
               style={{ padding: "2px 6px", fontSize: "12px" }}
             >
-              ❌
+              ✕
             </button>
           </div>
         )}

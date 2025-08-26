@@ -23,6 +23,7 @@ export default function VideoAnnotator() {
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
+  const [strokeDuration, setStrokeDuration] = useState<number | string>(2);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -216,7 +217,7 @@ export default function VideoAnnotator() {
         id: uid("s"),
         type: "stroke",
         timestamp: videoRef.current!.currentTime,
-        duration: 2,
+        duration: Math.max(0.1, Number(strokeDuration)),
         points: [p],
         color,
         width,
@@ -364,6 +365,48 @@ export default function VideoAnnotator() {
           <button onClick={() => setMode(mode === "draw" ? "none" : "draw")} style={{ background: mode === "draw" ? "var(--accent)" : "" }}>
             ✏️ Draw
           </button>
+
+          {/* Stroke duration selector */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              borderRadius: 8,
+              background: "rgba(0,0,0,0.04)",
+              border: "1px solid rgba(0,0,0,0.08)",
+              boxShadow: "0 1px 1px rgba(0,0,0,0.02)",
+            }}
+          >
+            <input
+              type="number"
+              min={0.1}
+              step={0.1}
+              value={strokeDuration}
+              onChange={(e) => {
+                setStrokeDuration(e.target.value);
+              }}
+              onBlur={() => {
+                const v = parseFloat(strokeDuration as string);
+                if (isNaN(v)) {
+                  setStrokeDuration(0.1);
+                } else {
+                  setStrokeDuration(Math.max(0.1, v));
+                }
+              }}
+              style={{
+                width: 36,
+                padding: "6px 8px",
+                borderRadius: 6,
+                border: "1px solid rgba(0,0,0,0.12)",
+                fontSize: 13,
+                background: "#fff",
+                color: "#111",
+                boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
+              }}
+            />
+            <span style={{ fontSize: 12, marginLeft: 5, color: "#666" }}>s</span>
+          </div>
+
           <button onClick={addText}>💬 Add Text</button>
           
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type SettingsMenuProps = {
   volume: number;
@@ -197,7 +197,18 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
             fontSize: "11px",
             color: "#888"
           }}>
-            <div>↑/↓ Volume • M Mute</div>
+            {/* Keyboard Shortcuts Help */}
+            <details style={{ marginBottom: 8, fontSize: "12px", color: "#888" }}>
+              <summary style={{ cursor: "pointer" }}>Keyboard Shortcuts</summary>
+              <div style={{ marginTop: 4, lineHeight: 1.4 }}>
+                <strong>Playback:</strong> Space/K (play/pause), ←→ (seek 5s), Shift+←→ (seek 10s), Ctrl+←→ (seek 1s)<br/>
+                <strong>Volume:</strong> ↑↓ (volume), M (mute)<br/>
+                <strong>Tools:</strong> D (draw mode), T (add text), Esc (deselect)<br/>
+                <strong>Edit:</strong> Ctrl+A (select all), Ctrl+C (copy), Ctrl+V (paste), Ctrl+X (cut), Ctrl+D (duplicate)<br/>
+                <strong>Delete:</strong> Del (selected), Ctrl+Shift+Del (all)<br/>
+                <strong>Undo:</strong> Ctrl+Z (undo), Ctrl+Y/Ctrl+Shift+Z (redo)
+              </div>
+            </details>
           </div>
         </div>
       )}

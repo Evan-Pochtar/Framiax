@@ -20,10 +20,19 @@ export default function VideoAnnotator() {
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
+  const [selectedAnnotations, setSelectedAnnotations] = useState<string[]>([]);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [strokeDuration, setStrokeDuration] = useState<number | string>(2);
+  const [copiedAnnotations, setCopiedAnnotations] = useState<Annotation[]>([]);
+  const [undoHistory, setUndoHistory] = useState<Annotation[][]>([]);
+  const [redoHistory, setRedoHistory] = useState<Annotation[][]>([]);
+
+  const saveState = () => {
+    setUndoHistory(prev => [...prev.slice(-19), annotations]);
+    setRedoHistory([]);
+  };
 
   useEffect(() => {
     const v = videoRef.current;
@@ -38,20 +47,132 @@ export default function VideoAnnotator() {
     v.muted = muted;
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target !== document.body) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      const isCtrl = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
       
       switch (e.key.toLowerCase()) {
+        // Volume
         case 'arrowup':
-          e.preventDefault();
-          setVolume(prev => Math.min(1, prev + 0.1));
+          if (!isCtrl) {
+            e.preventDefault();
+            setVolume(prev => Math.min(1, prev + 0.1));
+          }
           break;
         case 'arrowdown':
+          if (!isCtrl) {
+            e.preventDefault();
+            setVolume(prev => Math.max(0, prev - 0.1));
+          }
+          break;
+          
+        // Seeking
+        case 'arrowleft':
           e.preventDefault();
-          setVolume(prev => Math.max(0, prev - 0.1));
+          if (v) {
+            const seekAmount = isShift ? 10 : isCtrl ? 1 : 5;
+            v.currentTime = Math.max(0, v.currentTime - seekAmount);
+          }
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          if (v) {
+            const seekAmount = isShift ? 10 : isCtrl ? 1 : 5;
+            v.currentTime = Math.min(v.duration, v.currentTime + seekAmount);
+          }
+          break;
+          
+        // Playback
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          togglePlayPause();
           break;
         case 'm':
           e.preventDefault();
           setMuted(prev => !prev);
+          break;
+          
+        // Mode
+        case 'd':
+          e.preventDefault();
+          if (isCtrl) {
+            // Duplicate
+            if (selectedAnnotation) {
+              duplicateAnnotation(selectedAnnotation);
+            }
+          } else {
+            // Draw mode
+            setMode(mode === "draw" ? "none" : "draw");
+          }
+          break;
+        case 't':
+          if (!isCtrl) {
+            e.preventDefault();
+            setMode("text");
+            addText();
+          }
+          break;
+          
+        // Selection and editing
+        case 'a':
+          if (isCtrl) {
+            e.preventDefault();
+            selectAllVisibleAnnotations();
+          }
+          break;
+        case 'c':
+          if (isCtrl) {
+            e.preventDefault();
+            copySelectedAnnotations();
+          }
+          break;
+        case 'v':
+          if (isCtrl) {
+            e.preventDefault();
+            pasteAnnotations();
+          }
+          break;
+        case 'x':
+          if (isCtrl) {
+            e.preventDefault();
+            cutSelectedAnnotations();
+          }
+          break;
+        case 'delete':
+        case 'backspace':
+          e.preventDefault();
+          if (isCtrl && isShift) {
+            deleteAllAnnotations();
+          } else {
+            deleteSelectedAnnotations();
+          }
+          break;
+          
+        // Undo/Redo
+        case 'z':
+          if (isCtrl && !isShift) {
+            e.preventDefault();
+            undo();
+          } else if (isCtrl && isShift) {
+            e.preventDefault();
+            redo();
+          }
+          break;
+        case 'y':
+          if (isCtrl) {
+            e.preventDefault();
+            redo();
+          }
+          break;
+          
+        // Deselect
+        case 'escape':
+          e.preventDefault();
+          setSelectedAnnotation(null);
+          setSelectedAnnotations([]);
+          setMode("none");
           break;
       }
     };
@@ -69,7 +190,7 @@ export default function VideoAnnotator() {
       v.removeEventListener("pause", handlePause);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [volume, muted]);
+  }, [volume, muted, mode, selectedAnnotation, annotations]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -81,7 +202,96 @@ export default function VideoAnnotator() {
 
   useEffect(() => {
     render();
-  }, [annotations, currentTime, currentStroke, selectedAnnotation]);
+  }, [annotations, currentTime, currentStroke, selectedAnnotation, selectedAnnotations]);
+
+  // Undo
+  const undo = () => {
+    if (undoHistory.length === 0) return;
+    const previousState = undoHistory[undoHistory.length - 1];
+    setRedoHistory(prev => [annotations, ...prev]);
+    setUndoHistory(prev => prev.slice(0, -1));
+    setAnnotations(previousState);
+    setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
+  };
+
+  // Redo
+  const redo = () => {
+    if (redoHistory.length === 0) return;
+    const nextState = redoHistory[0];
+    setUndoHistory(prev => [...prev, annotations]);
+    setRedoHistory(prev => prev.slice(1));
+    setAnnotations(nextState);
+    setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
+  };
+
+  // Select all
+  const selectAllVisibleAnnotations = () => {
+    const t = videoRef.current!.currentTime;
+    const visibleIds = annotations
+      .filter(a => t >= a.timestamp && t <= a.timestamp + a.duration)
+      .map(a => a.id);
+    setSelectedAnnotations(visibleIds);
+    setSelectedAnnotation(visibleIds.length === 1 ? visibleIds[0] : null);
+  };
+
+  // Copy
+  const copySelectedAnnotations = () => {
+    const targetIds = selectedAnnotations.length > 0 ? selectedAnnotations : 
+                     selectedAnnotation ? [selectedAnnotation] : [];
+    const annotationsToCopy = annotations.filter(a => targetIds.includes(a.id));
+    setCopiedAnnotations(annotationsToCopy);
+  };
+
+  // Cut
+  const cutSelectedAnnotations = () => {
+    copySelectedAnnotations();
+    deleteSelectedAnnotations();
+  };
+
+  // Paste
+  const pasteAnnotations = () => {
+    if (copiedAnnotations.length === 0) return;
+    
+    saveState();
+    const currentTimestamp = videoRef.current!.currentTime;
+    const newAnnotations = copiedAnnotations.map(a => ({
+      ...a,
+      id: uid(a.type.charAt(0)),
+      timestamp: currentTimestamp
+    }));
+    
+    setAnnotations(prev => [...prev, ...newAnnotations]);
+    
+    const newIds = newAnnotations.map(a => a.id);
+    setSelectedAnnotations(newIds);
+    setSelectedAnnotation(newIds.length === 1 ? newIds[0] : null);
+  };
+
+  // Delete
+  const deleteSelectedAnnotations = () => {
+    const targetIds = selectedAnnotations.length > 0 ? selectedAnnotations : 
+                     selectedAnnotation ? [selectedAnnotation] : [];
+    if (targetIds.length === 0) return;
+    
+    saveState();
+    setAnnotations(prev => prev.filter(a => !targetIds.includes(a.id)));
+    setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
+  };
+
+  // Delete all
+  const deleteAllAnnotations = () => {
+    if (annotations.length === 0) return;
+    const confirmed = confirm(`Delete all ${annotations.length} annotations? This cannot be undone.`);
+    if (!confirmed) return;
+    
+    saveState();
+    setAnnotations([]);
+    setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
+  };
 
   function render() {
     const v = videoRef.current;
@@ -96,7 +306,7 @@ export default function VideoAnnotator() {
     annotations.forEach((a) => {
       if (t < a.timestamp || t > a.timestamp + a.duration) return;
       
-      const isSelected = selectedAnnotation === a.id;
+      const isSelected = selectedAnnotation === a.id || selectedAnnotations.includes(a.id);
       
       if (a.type === "stroke") {
         ctx.beginPath();
@@ -162,6 +372,9 @@ export default function VideoAnnotator() {
     videoRef.current!.src = url;
     setAnnotations([]);
     setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
+    setUndoHistory([]);
+    setRedoHistory([]);
   }
 
   function norm(e: React.PointerEvent | React.MouseEvent) {
@@ -205,6 +418,7 @@ export default function VideoAnnotator() {
     const hitAnnotation = findAnnotationAt(p);
     if (hitAnnotation && mode === "none") {
       setSelectedAnnotation(hitAnnotation);
+      setSelectedAnnotations([hitAnnotation]);
       const annotation = annotations.find(a => a.id === hitAnnotation);
       if (annotation && annotation.type === "text") {
         setDragOffset({ x: p.x - annotation.x, y: p.y - annotation.y });
@@ -213,6 +427,7 @@ export default function VideoAnnotator() {
     }
     
     if (mode === "draw") {
+      saveState();
       const s: Stroke = {
         id: uid("s"),
         type: "stroke",
@@ -226,6 +441,7 @@ export default function VideoAnnotator() {
     }
     
     setSelectedAnnotation(null);
+    setSelectedAnnotations([]);
   }
 
   function move(e: React.PointerEvent) {
@@ -259,6 +475,7 @@ export default function VideoAnnotator() {
   function addText() {
     const txt = prompt("Enter text");
     if (!txt) return;
+    saveState();
     const note: TextNote = {
       id: uid("t"),
       type: "text",
@@ -272,6 +489,7 @@ export default function VideoAnnotator() {
     };
     setAnnotations((a) => [...a, note]);
     setSelectedAnnotation(note.id);
+    setSelectedAnnotations([note.id]);
   }
 
   function updateSelectedTextSize(newSize: number) {
@@ -293,6 +511,7 @@ export default function VideoAnnotator() {
     const newText = prompt("Edit text", (annotation as TextNote).text);
     if (newText === null) return;
     
+    saveState();
     setAnnotations(anns =>
       anns.map(a =>
         a.id === selectedAnnotation
@@ -306,6 +525,7 @@ export default function VideoAnnotator() {
     const annotation = annotations.find(a => a.id === id);
     if (!annotation) return;
     
+    saveState();
     const duplicate = {
       ...annotation,
       id: uid(annotation.type.charAt(0)),
@@ -313,6 +533,8 @@ export default function VideoAnnotator() {
     };
     
     setAnnotations(a => [...a, duplicate]);
+    setSelectedAnnotation(duplicate.id);
+    setSelectedAnnotations([duplicate.id]);
   }
 
   function exportJSON() {
@@ -335,15 +557,19 @@ export default function VideoAnnotator() {
     const f = e.target.files?.[0];
     if (!f) return;
     f.text().then((txt) => {
+      saveState();
       const data: ExportPayload = JSON.parse(txt);
       setAnnotations(data.annotations);
       setSelectedAnnotation(null);
+      setSelectedAnnotations([]);
     });
   }
 
   const selectedAnnotationData = selectedAnnotation 
     ? annotations.find(a => a.id === selectedAnnotation) 
     : null;
+
+  const selectedCount = selectedAnnotations.length;
 
   return (
     <div style={{ display: "flex", gap: 12 }}>
@@ -436,8 +662,26 @@ export default function VideoAnnotator() {
             <span style={{ fontSize: "12px" }}>{fontSize}px</span>
           </div>
           
+          {/* Undo/Redo buttons */}
+          <button 
+            onClick={undo} 
+            disabled={undoHistory.length === 0}
+            style={{ opacity: undoHistory.length === 0 ? 0.5 : 1 }}
+            title="Undo (Ctrl+Z)"
+          >
+            ↶
+          </button>
+          <button 
+            onClick={redo} 
+            disabled={redoHistory.length === 0}
+            style={{ opacity: redoHistory.length === 0 ? 0.5 : 1 }}
+            title="Redo (Ctrl+Y)"
+          >
+            ↷
+          </button>
+          
           <button onClick={exportJSON}>💾 Export</button>
-          <button onClick={() => importInputRef.current?.click()}>📁 Import</button>
+          <button onClick={() => importInputRef.current?.click()}>📂 Import</button>
           <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importJSON} />
           
           <SettingsMenu
@@ -447,6 +691,26 @@ export default function VideoAnnotator() {
             onMuteToggle={() => setMuted(prev => !prev)}
           />
         </div>
+
+        {/* Selection Status */}
+        {selectedCount > 0 && (
+          <div style={{ 
+            background: "rgba(255, 107, 107, 0.1)", 
+            border: "1px solid #ff6b6b", 
+            borderRadius: "6px", 
+            padding: "6px 8px", 
+            marginBottom: "8px",
+            fontSize: "12px",
+            color: "#ff6b6b"
+          }}>
+            {selectedCount} annotation{selectedCount > 1 ? 's' : ''} selected
+            {copiedAnnotations.length > 0 && (
+              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                • {copiedAnnotations.length} copied
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Selected Annotation Controls */}
         {selectedAnnotationData && (
@@ -482,12 +746,17 @@ export default function VideoAnnotator() {
             <button 
               onClick={() => duplicateAnnotation(selectedAnnotation!)} 
               style={{ padding: "2px 6px", fontSize: "12px" }}
+              title="Duplicate (Ctrl+D)"
             >
               📋 Duplicate
             </button>
             <button 
-              onClick={() => setSelectedAnnotation(null)} 
+              onClick={() => {
+                setSelectedAnnotation(null);
+                setSelectedAnnotations([]);
+              }} 
               style={{ padding: "2px 6px", fontSize: "12px" }}
+              title="Deselect (Esc)"
             >
               ✕
             </button>
@@ -536,11 +805,20 @@ export default function VideoAnnotator() {
             style={{ 
               marginBottom: 6, 
               padding: 4,
-              background: selectedAnnotation === a.id ? "var(--accent)" : "transparent",
+              background: selectedAnnotations.includes(a.id) ? "var(--accent)" : "transparent",
               borderRadius: 4,
               cursor: "pointer"
             }}
-            onClick={() => setSelectedAnnotation(selectedAnnotation === a.id ? null : a.id)}
+            onClick={() => {
+              const isCurrentlySelected = selectedAnnotations.includes(a.id);
+              if (isCurrentlySelected) {
+                setSelectedAnnotations([]);
+                setSelectedAnnotation(null);
+              } else {
+                setSelectedAnnotations([a.id]);
+                setSelectedAnnotation(a.id);
+              }
+            }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>{a.type} @ {a.timestamp.toFixed(1)}s</span>
@@ -548,12 +826,22 @@ export default function VideoAnnotator() {
                 <button 
                   onClick={(e) => { e.stopPropagation(); videoRef.current!.currentTime = a.timestamp; }}
                   style={{ padding: "2px 4px", fontSize: "10px" }}
+                  title="Go to timestamp"
                 >
                   ⏯
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); setAnnotations((anns) => anns.filter((x) => x.id !== a.id)); }}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    saveState();
+                    setAnnotations((anns) => anns.filter((x) => x.id !== a.id)); 
+                    if (selectedAnnotation === a.id) {
+                      setSelectedAnnotation(null);
+                      setSelectedAnnotations([]);
+                    }
+                  }}
                   style={{ padding: "2px 4px", fontSize: "10px" }}
+                  title="Delete"
                 >
                   🗑
                 </button>

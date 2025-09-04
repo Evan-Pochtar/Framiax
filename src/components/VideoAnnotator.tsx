@@ -569,8 +569,6 @@ export default function VideoAnnotator() {
     ? annotations.find(a => a.id === selectedAnnotation) 
     : null;
 
-  const selectedCount = selectedAnnotations.length;
-
   return (
     <div style={{ display: "flex", gap: 12 }}>
       <div style={{ flex: 1 }}>
@@ -691,26 +689,6 @@ export default function VideoAnnotator() {
             onMuteToggle={() => setMuted(prev => !prev)}
           />
         </div>
-
-        {/* Selection Status */}
-        {selectedCount > 0 && (
-          <div style={{ 
-            background: "rgba(255, 107, 107, 0.1)", 
-            border: "1px solid #ff6b6b", 
-            borderRadius: "6px", 
-            padding: "6px 8px", 
-            marginBottom: "8px",
-            fontSize: "12px",
-            color: "#ff6b6b"
-          }}>
-            {selectedCount} annotation{selectedCount > 1 ? 's' : ''} selected
-            {copiedAnnotations.length > 0 && (
-              <span style={{ marginLeft: 8, opacity: 0.7 }}>
-                • {copiedAnnotations.length} copied
-              </span>
-            )}
-          </div>
-        )}
 
         {/* Selected Annotation Controls */}
         {selectedAnnotationData && (

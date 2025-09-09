@@ -3,6 +3,7 @@ import { Annotation, Stroke, TextNote, ExportPayload } from "../types";
 import { uid, simplify, clamp } from "../utils";
 import Timeline from "./Timeline";
 import SettingsMenu from "./SettingsMenu";
+import ExportPopup from "./ExportPopup";
 
 export default function VideoAnnotator() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,6 +29,7 @@ export default function VideoAnnotator() {
   const [copiedAnnotations, setCopiedAnnotations] = useState<Annotation[]>([]);
   const [undoHistory, setUndoHistory] = useState<Annotation[][]>([]);
   const [redoHistory, setRedoHistory] = useState<Annotation[][]>([]);
+  const [showExportPopup, setShowExportPopup] = useState(false);
 
   const saveState = () => {
     setUndoHistory(prev => [...prev.slice(-19), annotations]);
@@ -537,22 +539,6 @@ export default function VideoAnnotator() {
     setSelectedAnnotations([duplicate.id]);
   }
 
-  function exportJSON() {
-    const payload: ExportPayload = {
-      createdAt: new Date().toISOString(),
-      videoUrl: videoRef.current?.src || null,
-      annotations,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "annotations.json";
-    a.click();
-  }
-
   function importJSON(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -678,7 +664,7 @@ export default function VideoAnnotator() {
             ↷
           </button>
           
-          <button onClick={exportJSON}>💾 Export</button>
+          <button onClick={() => setShowExportPopup(true)}>💾 Export</button>
           <button onClick={() => importInputRef.current?.click()}>📂 Import</button>
           <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importJSON} />
           
@@ -836,6 +822,15 @@ export default function VideoAnnotator() {
           </div>
         ))}
       </div>
+
+      {/* Export Popup */}
+      <ExportPopup
+        isOpen={showExportPopup}
+        onClose={() => setShowExportPopup(false)}
+        annotations={annotations}
+        videoRef={videoRef}
+        fontSize={fontSize}
+      />
     </div>
   );
 }

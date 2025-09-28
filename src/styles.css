@@ -7,7 +7,9 @@
   --border: #444;
 }
 
-body, html, #root {
+body,
+html,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -141,11 +143,11 @@ input:focus {
   .main {
     padding: 8px;
   }
-  
+
   .annotation-list {
     min-width: 200px;
   }
-  
+
   button {
     padding: 4px 8px;
     font-size: 12px;

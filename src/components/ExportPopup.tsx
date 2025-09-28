@@ -9,7 +9,13 @@ interface ExportPopupProps {
   fontSize: number;
 }
 
-export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fontSize }: ExportPopupProps) {
+export default function ExportPopup({
+  isOpen,
+  onClose,
+  annotations,
+  videoRef,
+  fontSize,
+}: ExportPopupProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportType, setExportType] = useState<"json" | "video">("json");
@@ -35,10 +41,15 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
     onClose();
   };
 
-  const renderAnnotationsOnCanvas = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, currentTime: number) => {
+  const renderAnnotationsOnCanvas = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    currentTime: number,
+  ) => {
     annotations.forEach((a) => {
-      if (currentTime < a.timestamp || currentTime > a.timestamp + a.duration) return;
-      
+      if (currentTime < a.timestamp || currentTime > a.timestamp + a.duration)
+        return;
+
       if (a.type === "stroke") {
         ctx.beginPath();
         ctx.lineWidth = a.width;
@@ -48,14 +59,22 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
         const pts = a.points;
         if (pts.length > 0) {
           ctx.moveTo(pts[0].x * canvas.width, pts[0].y * canvas.height);
-          pts.slice(1).forEach((p) => ctx.lineTo(p.x * canvas.width, p.y * canvas.height));
+          pts
+            .slice(1)
+            .forEach((p) =>
+              ctx.lineTo(p.x * canvas.width, p.y * canvas.height),
+            );
           ctx.stroke();
         }
       } else if (a.type === "text") {
         const textAnnotation = a as TextNote;
         ctx.fillStyle = a.color;
         ctx.font = `${textAnnotation.fontSize || fontSize}px sans-serif`;
-        ctx.fillText(textAnnotation.text, a.x * canvas.width, a.y * canvas.height);
+        ctx.fillText(
+          textAnnotation.text,
+          a.x * canvas.width,
+          a.y * canvas.height,
+        );
       }
     });
   };
@@ -73,14 +92,14 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
     try {
       const canvas = canvasRef.current!;
       const ctx = canvas.getContext("2d")!;
-      
+
       // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
       // Create MediaRecorder stream
       const stream = canvas.captureStream(30); // 30 fps
-      
+
       // Get audio track from video
       let audioStream: MediaStream | null = null;
       try {
@@ -91,10 +110,10 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
         source.connect(destination);
         source.connect(audioContext.destination);
         audioStream = destination.stream;
-        
+
         // Add audio track to stream
         if (audioStream.getAudioTracks().length > 0) {
-          audioStream.getAudioTracks().forEach(track => {
+          audioStream.getAudioTracks().forEach((track) => {
             stream.addTrack(track);
           });
         }
@@ -103,11 +122,11 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
       }
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9,opus'
+        mimeType: "video/webm;codecs=vp9,opus",
       });
 
       const chunks: Blob[] = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data);
@@ -115,7 +134,7 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
+        const blob = new Blob(chunks, { type: "video/webm" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -139,23 +158,23 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
         if (!video.paused && !video.ended) {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
+
           // Draw video frame
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
+
           // Draw annotations
           renderAnnotationsOnCanvas(ctx, canvas, video.currentTime);
-          
+
           // Update progress
           setExportProgress((video.currentTime / video.duration) * 100);
-          
+
           requestAnimationFrame(renderFrame);
         } else if (video.ended) {
           // Stop recording when video ends
           mediaRecorder.stop();
           video.playbackRate = originalPlaybackRate;
           if (audioStream) {
-            audioStream.getTracks().forEach(track => track.stop());
+            audioStream.getTracks().forEach((track) => track.stop());
           }
         }
       };
@@ -163,7 +182,6 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
       // Start playback and rendering
       video.play();
       renderFrame();
-
     } catch (error) {
       console.error("Export failed:", error);
       alert("Export failed. Please try again.");
@@ -174,7 +192,7 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         style={{
           position: "fixed",
           inset: 0,
@@ -183,34 +201,53 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "black"
+          color: "black",
         }}
         onClick={onClose}
       >
         {/* Modal */}
-        <div 
+        <div
           style={{
             backgroundColor: "white",
             borderRadius: "8px",
             padding: "24px",
             minWidth: "400px",
             maxWidth: "500px",
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)"
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 style={{ margin: "0 0 16px 0", fontSize: "20px", fontWeight: "600" }}>
+          <h2
+            style={{
+              margin: "0 0 16px 0",
+              fontSize: "20px",
+              fontWeight: "600",
+            }}
+          >
             Export Options
           </h2>
 
           {!isExporting ? (
             <>
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "500",
+                  }}
+                >
                   Export Type:
                 </label>
                 <div style={{ display: "flex", gap: "12px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
                     <input
                       type="radio"
                       value="json"
@@ -219,7 +256,14 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
                     />
                     <span>JSON Annotations</span>
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
                     <input
                       type="radio"
                       value="video"
@@ -231,27 +275,54 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
                 </div>
               </div>
 
-              <div style={{ marginBottom: "20px", padding: "12px", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <div
+                style={{
+                  marginBottom: "20px",
+                  padding: "12px",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "6px",
+                }}
+              >
                 {exportType === "json" ? (
                   <div>
                     <strong>JSON Export:</strong>
-                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#666" }}>
-                      Exports all annotations as a JSON file that can be imported later. 
-                      Includes timestamps, positions, colors, and text content.
+                    <p
+                      style={{
+                        margin: "4px 0",
+                        fontSize: "14px",
+                        color: "#666",
+                      }}
+                    >
+                      Exports all annotations as a JSON file that can be
+                      imported later. Includes timestamps, positions, colors,
+                      and text content.
                     </p>
                   </div>
                 ) : (
                   <div>
                     <strong>Video Export:</strong>
-                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#666" }}>
-                      Creates a new video file with annotations permanently drawn on it. 
-                      Preserves original quality and audio. Export time depends on video length.
+                    <p
+                      style={{
+                        margin: "4px 0",
+                        fontSize: "14px",
+                        color: "#666",
+                      }}
+                    >
+                      Creates a new video file with annotations permanently
+                      drawn on it. Preserves original quality and audio. Export
+                      time depends on video length.
                     </p>
                   </div>
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                }}
+              >
                 <button
                   onClick={onClose}
                   style={{
@@ -259,13 +330,17 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
                     border: "1px solid #ddd",
                     borderRadius: "4px",
                     backgroundColor: "white",
-                    cursor: "pointer"
+                    cursor: "pointer",
                   }}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={exportType === "json" ? exportJSON : exportVideoWithAnnotations}
+                  onClick={
+                    exportType === "json"
+                      ? exportJSON
+                      : exportVideoWithAnnotations
+                  }
                   style={{
                     padding: "8px 16px",
                     border: "none",
@@ -273,9 +348,9 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
                     backgroundColor: "#007bff",
                     color: "white",
                     cursor: "pointer",
-                    fontWeight: "500"
+                    fontWeight: "500",
                   }}
-                  disabled={exportType === "video" && (!videoRef.current?.src)}
+                  disabled={exportType === "video" && !videoRef.current?.src}
                 >
                   {exportType === "json" ? "Export JSON" : "Export Video"}
                 </button>
@@ -284,24 +359,33 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
           ) : (
             <div>
               <h3 style={{ margin: "0 0 16px 0" }}>Exporting Video...</h3>
-              <div style={{ 
-                width: "100%", 
-                height: "8px", 
-                backgroundColor: "#e0e0e0", 
-                borderRadius: "4px",
-                marginBottom: "12px"
-              }}>
-                <div 
+              <div
+                style={{
+                  width: "100%",
+                  height: "8px",
+                  backgroundColor: "#e0e0e0",
+                  borderRadius: "4px",
+                  marginBottom: "12px",
+                }}
+              >
+                <div
                   style={{
                     width: `${exportProgress}%`,
                     height: "100%",
                     backgroundColor: "#007bff",
                     borderRadius: "4px",
-                    transition: "width 0.3s ease"
+                    transition: "width 0.3s ease",
                   }}
                 />
               </div>
-              <p style={{ margin: 0, fontSize: "14px", color: "#666", textAlign: "center" }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "14px",
+                  color: "#666",
+                  textAlign: "center",
+                }}
+              >
                 {exportProgress.toFixed(1)}% complete
               </p>
             </div>
@@ -310,10 +394,7 @@ export default function ExportPopup({ isOpen, onClose, annotations, videoRef, fo
       </div>
 
       {/* Hidden canvas for video rendering */}
-      <canvas
-        ref={canvasRef}
-        style={{ display: "none" }}
-      />
+      <canvas ref={canvasRef} style={{ display: "none" }} />
     </>
   );
 }

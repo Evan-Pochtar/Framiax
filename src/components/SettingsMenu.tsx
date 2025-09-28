@@ -7,27 +7,42 @@ type SettingsMenuProps = {
   onMuteToggle: () => void;
 };
 
-export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteToggle }: SettingsMenuProps) {
+export default function SettingsMenu({
+  volume,
+  onVolumeChange,
+  muted,
+  onMuteToggle,
+}: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && buttonRef.current && 
-          !menuRef.current.contains(event.target as Node) && 
-          !buttonRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        buttonRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
 
-  const volumeIcon = muted ? "🔇" : volume === 0 ? "🔈" : volume < 0.5 ? "🔉" : "🔊";
+  const volumeIcon = muted
+    ? "🔇"
+    : volume === 0
+      ? "🔈"
+      : volume < 0.5
+        ? "🔉"
+        : "🔊";
 
   return (
     <div style={{ position: "relative" }}>
@@ -44,7 +59,7 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
           display: "flex",
           alignItems: "center",
           gap: "4px",
-          color: "var(--fg)"
+          color: "var(--fg)",
         }}
         title="Settings"
       >
@@ -66,29 +81,33 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
             minWidth: "220px",
             boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
             zIndex: 1000,
-            backdropFilter: "blur(8px)"
+            backdropFilter: "blur(8px)",
           }}
         >
           {/* Settings Header */}
-          <div style={{
-            fontSize: "14px",
-            fontWeight: "bold",
-            marginBottom: "12px",
-            paddingBottom: "8px",
-            borderBottom: "1px solid var(--border)",
-            color: "var(--fg)"
-          }}>
+          <div
+            style={{
+              fontSize: "14px",
+              fontWeight: "bold",
+              marginBottom: "12px",
+              paddingBottom: "8px",
+              borderBottom: "1px solid var(--border)",
+              color: "var(--fg)",
+            }}
+          >
             Audio Settings
           </div>
 
           {/* Volume Section */}
           <div style={{ marginBottom: "16px" }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "8px"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+              }}
+            >
               <label style={{ fontSize: "13px", color: "var(--fg)" }}>
                 Volume
               </label>
@@ -97,11 +116,13 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
               </span>
             </div>
 
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
               <button
                 onClick={onMuteToggle}
                 style={{
@@ -116,7 +137,7 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "var(--fg)"
+                  color: "var(--fg)",
                 }}
                 title={muted ? "Unmute" : "Mute"}
               >
@@ -143,7 +164,7 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
                   background: "#444",
                   borderRadius: "2px",
                   outline: "none",
-                  cursor: "pointer"
+                  cursor: "pointer",
                 }}
               />
             </div>
@@ -151,17 +172,21 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
 
           {/* Quick Volume Presets */}
           <div>
-            <div style={{
-              fontSize: "13px",
-              color: "var(--fg)",
-              marginBottom: "8px"
-            }}>
+            <div
+              style={{
+                fontSize: "13px",
+                color: "var(--fg)",
+                marginBottom: "8px",
+              }}
+            >
               Quick Sets
             </div>
-            <div style={{
-              display: "flex",
-              gap: "4px"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+              }}
+            >
               {[0.25, 0.5, 0.75, 1.0].map((preset) => (
                 <button
                   key={preset}
@@ -172,7 +197,10 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
                     }
                   }}
                   style={{
-                    background: Math.abs(volume - preset) < 0.01 && !muted ? "var(--accent)" : "transparent",
+                    background:
+                      Math.abs(volume - preset) < 0.01 && !muted
+                        ? "var(--accent)"
+                        : "transparent",
                     border: "1px solid var(--border)",
                     borderRadius: "4px",
                     padding: "2px 6px",
@@ -180,7 +208,7 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
                     fontSize: "11px",
                     color: "var(--fg)",
                     flex: 1,
-                    textAlign: "center"
+                    textAlign: "center",
                   }}
                 >
                   {Math.round(preset * 100)}%
@@ -190,22 +218,36 @@ export default function SettingsMenu({ volume, onVolumeChange, muted, onMuteTogg
           </div>
 
           {/* Keyboard Shortcuts Info */}
-          <div style={{
-            marginTop: "12px",
-            paddingTop: "8px",
-            borderTop: "1px solid var(--border)",
-            fontSize: "11px",
-            color: "#888"
-          }}>
+          <div
+            style={{
+              marginTop: "12px",
+              paddingTop: "8px",
+              borderTop: "1px solid var(--border)",
+              fontSize: "11px",
+              color: "#888",
+            }}
+          >
             {/* Keyboard Shortcuts Help */}
-            <details style={{ marginBottom: 8, fontSize: "12px", color: "#888" }}>
-              <summary style={{ cursor: "pointer" }}>Keyboard Shortcuts</summary>
+            <details
+              style={{ marginBottom: 8, fontSize: "12px", color: "#888" }}
+            >
+              <summary style={{ cursor: "pointer" }}>
+                Keyboard Shortcuts
+              </summary>
               <div style={{ marginTop: 4, lineHeight: 1.4 }}>
-                <strong>Playback:</strong> Space/K (play/pause), ←→ (seek 5s), Shift+←→ (seek 10s), Ctrl+←→ (seek 1s)<br/>
-                <strong>Volume:</strong> ↑↓ (volume), M (mute)<br/>
-                <strong>Tools:</strong> D (draw mode), T (add text), Esc (deselect)<br/>
-                <strong>Edit:</strong> Ctrl+A (select all), Ctrl+C (copy), Ctrl+V (paste), Ctrl+X (cut), Ctrl+D (duplicate)<br/>
-                <strong>Delete:</strong> Del (selected), Ctrl+Shift+Del (all)<br/>
+                <strong>Playback:</strong> Space/K (play/pause), ←→ (seek 5s),
+                Shift+←→ (seek 10s), Ctrl+←→ (seek 1s)
+                <br />
+                <strong>Volume:</strong> ↑↓ (volume), M (mute)
+                <br />
+                <strong>Tools:</strong> D (draw mode), T (add text), Esc
+                (deselect)
+                <br />
+                <strong>Edit:</strong> Ctrl+A (select all), Ctrl+C (copy),
+                Ctrl+V (paste), Ctrl+X (cut), Ctrl+D (duplicate)
+                <br />
+                <strong>Delete:</strong> Del (selected), Ctrl+Shift+Del (all)
+                <br />
                 <strong>Undo:</strong> Ctrl+Z (undo), Ctrl+Y/Ctrl+Shift+Z (redo)
               </div>
             </details>

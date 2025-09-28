@@ -20,9 +20,13 @@ export default function VideoAnnotator() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
+  const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(
+    null,
+  );
   const [selectedAnnotations, setSelectedAnnotations] = useState<string[]>([]);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [strokeDuration, setStrokeDuration] = useState<number | string>(2);
@@ -32,72 +36,76 @@ export default function VideoAnnotator() {
   const [showExportPopup, setShowExportPopup] = useState(false);
 
   const saveState = () => {
-    setUndoHistory(prev => [...prev.slice(-19), annotations]);
+    setUndoHistory((prev) => [...prev.slice(-19), annotations]);
     setRedoHistory([]);
   };
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    
+
     const handleTimeUpdate = () => setCurrentTime(v.currentTime);
     const handleLoadedMetadata = () => setDuration(v.duration);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    
+
     v.volume = volume;
     v.muted = muted;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+
       const isCtrl = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;
-      
+
       switch (e.key.toLowerCase()) {
         // Volume
-        case 'arrowup':
+        case "arrowup":
           if (!isCtrl) {
             e.preventDefault();
-            setVolume(prev => Math.min(1, prev + 0.1));
+            setVolume((prev) => Math.min(1, prev + 0.1));
           }
           break;
-        case 'arrowdown':
+        case "arrowdown":
           if (!isCtrl) {
             e.preventDefault();
-            setVolume(prev => Math.max(0, prev - 0.1));
+            setVolume((prev) => Math.max(0, prev - 0.1));
           }
           break;
-          
+
         // Seeking
-        case 'arrowleft':
+        case "arrowleft":
           e.preventDefault();
           if (v) {
             const seekAmount = isShift ? 10 : isCtrl ? 1 : 5;
             v.currentTime = Math.max(0, v.currentTime - seekAmount);
           }
           break;
-        case 'arrowright':
+        case "arrowright":
           e.preventDefault();
           if (v) {
             const seekAmount = isShift ? 10 : isCtrl ? 1 : 5;
             v.currentTime = Math.min(v.duration, v.currentTime + seekAmount);
           }
           break;
-          
+
         // Playback
-        case ' ':
-        case 'k':
+        case " ":
+        case "k":
           e.preventDefault();
           togglePlayPause();
           break;
-        case 'm':
+        case "m":
           e.preventDefault();
-          setMuted(prev => !prev);
+          setMuted((prev) => !prev);
           break;
-          
+
         // Mode
-        case 'd':
+        case "d":
           e.preventDefault();
           if (isCtrl) {
             // Duplicate
@@ -109,41 +117,41 @@ export default function VideoAnnotator() {
             setMode(mode === "draw" ? "none" : "draw");
           }
           break;
-        case 't':
+        case "t":
           if (!isCtrl) {
             e.preventDefault();
             setMode("text");
             addText();
           }
           break;
-          
+
         // Selection and editing
-        case 'a':
+        case "a":
           if (isCtrl) {
             e.preventDefault();
             selectAllVisibleAnnotations();
           }
           break;
-        case 'c':
+        case "c":
           if (isCtrl) {
             e.preventDefault();
             copySelectedAnnotations();
           }
           break;
-        case 'v':
+        case "v":
           if (isCtrl) {
             e.preventDefault();
             pasteAnnotations();
           }
           break;
-        case 'x':
+        case "x":
           if (isCtrl) {
             e.preventDefault();
             cutSelectedAnnotations();
           }
           break;
-        case 'delete':
-        case 'backspace':
+        case "delete":
+        case "backspace":
           e.preventDefault();
           if (isCtrl && isShift) {
             deleteAllAnnotations();
@@ -151,9 +159,9 @@ export default function VideoAnnotator() {
             deleteSelectedAnnotations();
           }
           break;
-          
+
         // Undo/Redo
-        case 'z':
+        case "z":
           if (isCtrl && !isShift) {
             e.preventDefault();
             undo();
@@ -162,15 +170,15 @@ export default function VideoAnnotator() {
             redo();
           }
           break;
-        case 'y':
+        case "y":
           if (isCtrl) {
             e.preventDefault();
             redo();
           }
           break;
-          
+
         // Deselect
-        case 'escape':
+        case "escape":
           e.preventDefault();
           setSelectedAnnotation(null);
           setSelectedAnnotations([]);
@@ -178,13 +186,13 @@ export default function VideoAnnotator() {
           break;
       }
     };
-    
+
     v.addEventListener("timeupdate", handleTimeUpdate);
     v.addEventListener("loadedmetadata", handleLoadedMetadata);
     v.addEventListener("play", handlePlay);
     v.addEventListener("pause", handlePause);
     document.addEventListener("keydown", handleKeyDown);
-    
+
     return () => {
       v.removeEventListener("timeupdate", handleTimeUpdate);
       v.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -204,14 +212,20 @@ export default function VideoAnnotator() {
 
   useEffect(() => {
     render();
-  }, [annotations, currentTime, currentStroke, selectedAnnotation, selectedAnnotations]);
+  }, [
+    annotations,
+    currentTime,
+    currentStroke,
+    selectedAnnotation,
+    selectedAnnotations,
+  ]);
 
   // Undo
   const undo = () => {
     if (undoHistory.length === 0) return;
     const previousState = undoHistory[undoHistory.length - 1];
-    setRedoHistory(prev => [annotations, ...prev]);
-    setUndoHistory(prev => prev.slice(0, -1));
+    setRedoHistory((prev) => [annotations, ...prev]);
+    setUndoHistory((prev) => prev.slice(0, -1));
     setAnnotations(previousState);
     setSelectedAnnotation(null);
     setSelectedAnnotations([]);
@@ -221,8 +235,8 @@ export default function VideoAnnotator() {
   const redo = () => {
     if (redoHistory.length === 0) return;
     const nextState = redoHistory[0];
-    setUndoHistory(prev => [...prev, annotations]);
-    setRedoHistory(prev => prev.slice(1));
+    setUndoHistory((prev) => [...prev, annotations]);
+    setRedoHistory((prev) => prev.slice(1));
     setAnnotations(nextState);
     setSelectedAnnotation(null);
     setSelectedAnnotations([]);
@@ -232,17 +246,23 @@ export default function VideoAnnotator() {
   const selectAllVisibleAnnotations = () => {
     const t = videoRef.current!.currentTime;
     const visibleIds = annotations
-      .filter(a => t >= a.timestamp && t <= a.timestamp + a.duration)
-      .map(a => a.id);
+      .filter((a) => t >= a.timestamp && t <= a.timestamp + a.duration)
+      .map((a) => a.id);
     setSelectedAnnotations(visibleIds);
     setSelectedAnnotation(visibleIds.length === 1 ? visibleIds[0] : null);
   };
 
   // Copy
   const copySelectedAnnotations = () => {
-    const targetIds = selectedAnnotations.length > 0 ? selectedAnnotations : 
-                     selectedAnnotation ? [selectedAnnotation] : [];
-    const annotationsToCopy = annotations.filter(a => targetIds.includes(a.id));
+    const targetIds =
+      selectedAnnotations.length > 0
+        ? selectedAnnotations
+        : selectedAnnotation
+          ? [selectedAnnotation]
+          : [];
+    const annotationsToCopy = annotations.filter((a) =>
+      targetIds.includes(a.id),
+    );
     setCopiedAnnotations(annotationsToCopy);
   };
 
@@ -255,30 +275,34 @@ export default function VideoAnnotator() {
   // Paste
   const pasteAnnotations = () => {
     if (copiedAnnotations.length === 0) return;
-    
+
     saveState();
     const currentTimestamp = videoRef.current!.currentTime;
-    const newAnnotations = copiedAnnotations.map(a => ({
+    const newAnnotations = copiedAnnotations.map((a) => ({
       ...a,
       id: uid(a.type.charAt(0)),
-      timestamp: currentTimestamp
+      timestamp: currentTimestamp,
     }));
-    
-    setAnnotations(prev => [...prev, ...newAnnotations]);
-    
-    const newIds = newAnnotations.map(a => a.id);
+
+    setAnnotations((prev) => [...prev, ...newAnnotations]);
+
+    const newIds = newAnnotations.map((a) => a.id);
     setSelectedAnnotations(newIds);
     setSelectedAnnotation(newIds.length === 1 ? newIds[0] : null);
   };
 
   // Delete
   const deleteSelectedAnnotations = () => {
-    const targetIds = selectedAnnotations.length > 0 ? selectedAnnotations : 
-                     selectedAnnotation ? [selectedAnnotation] : [];
+    const targetIds =
+      selectedAnnotations.length > 0
+        ? selectedAnnotations
+        : selectedAnnotation
+          ? [selectedAnnotation]
+          : [];
     if (targetIds.length === 0) return;
-    
+
     saveState();
-    setAnnotations(prev => prev.filter(a => !targetIds.includes(a.id)));
+    setAnnotations((prev) => prev.filter((a) => !targetIds.includes(a.id)));
     setSelectedAnnotation(null);
     setSelectedAnnotations([]);
   };
@@ -286,9 +310,11 @@ export default function VideoAnnotator() {
   // Delete all
   const deleteAllAnnotations = () => {
     if (annotations.length === 0) return;
-    const confirmed = confirm(`Delete all ${annotations.length} annotations? This cannot be undone.`);
+    const confirmed = confirm(
+      `Delete all ${annotations.length} annotations? This cannot be undone.`,
+    );
     if (!confirmed) return;
-    
+
     saveState();
     setAnnotations([]);
     setSelectedAnnotation(null);
@@ -307,9 +333,10 @@ export default function VideoAnnotator() {
 
     annotations.forEach((a) => {
       if (t < a.timestamp || t > a.timestamp + a.duration) return;
-      
-      const isSelected = selectedAnnotation === a.id || selectedAnnotations.includes(a.id);
-      
+
+      const isSelected =
+        selectedAnnotation === a.id || selectedAnnotations.includes(a.id);
+
       if (a.type === "stroke") {
         ctx.beginPath();
         ctx.lineWidth = a.width + (isSelected ? 2 : 0);
@@ -325,7 +352,7 @@ export default function VideoAnnotator() {
         ctx.fillStyle = isSelected ? "#ff6b6b" : a.color;
         ctx.font = `${textAnnotation.fontSize || fontSize}px sans-serif`;
         ctx.fillText(textAnnotation.text, a.x * c.width, a.y * c.height);
-        
+
         if (isSelected) {
           const metrics = ctx.measureText(textAnnotation.text);
           const textHeight = textAnnotation.fontSize || fontSize;
@@ -336,7 +363,7 @@ export default function VideoAnnotator() {
             a.x * c.width - 2,
             a.y * c.height - textHeight,
             metrics.width + 4,
-            textHeight + 4
+            textHeight + 4,
           );
           ctx.setLineDash([]);
         }
@@ -359,7 +386,7 @@ export default function VideoAnnotator() {
   function togglePlayPause() {
     const v = videoRef.current;
     if (!v) return;
-    
+
     if (v.paused) {
       v.play();
     } else {
@@ -390,7 +417,7 @@ export default function VideoAnnotator() {
   function findAnnotationAt(point: { x: number; y: number }) {
     const t = videoRef.current!.currentTime;
     const c = canvasRef.current!;
-    
+
     for (const a of annotations.slice().reverse()) {
       if (t < a.timestamp || t > a.timestamp + a.duration) continue;
       if (a.type === "text") {
@@ -399,18 +426,23 @@ export default function VideoAnnotator() {
         ctx.font = `${textAnnotation.fontSize || fontSize}px sans-serif`;
         const metrics = ctx.measureText(textAnnotation.text);
         const textHeight = textAnnotation.fontSize || fontSize;
-        
+
         const left = a.x - 0.01;
-        const right = a.x + (metrics.width / c.width) + 0.01;
-        const top = a.y - (textHeight / c.height);
+        const right = a.x + metrics.width / c.width + 0.01;
+        const top = a.y - textHeight / c.height;
         const bottom = a.y + 0.02;
-        
-        if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+
+        if (
+          point.x >= left &&
+          point.x <= right &&
+          point.y >= top &&
+          point.y <= bottom
+        ) {
           return a.id;
         }
       }
     }
-    
+
     return null;
   }
 
@@ -421,13 +453,13 @@ export default function VideoAnnotator() {
     if (hitAnnotation && mode === "none") {
       setSelectedAnnotation(hitAnnotation);
       setSelectedAnnotations([hitAnnotation]);
-      const annotation = annotations.find(a => a.id === hitAnnotation);
+      const annotation = annotations.find((a) => a.id === hitAnnotation);
       if (annotation && annotation.type === "text") {
         setDragOffset({ x: p.x - annotation.x, y: p.y - annotation.y });
       }
       return;
     }
-    
+
     if (mode === "draw") {
       saveState();
       const s: Stroke = {
@@ -441,25 +473,25 @@ export default function VideoAnnotator() {
       };
       setCurrentStroke(s);
     }
-    
+
     setSelectedAnnotation(null);
     setSelectedAnnotations([]);
   }
 
   function move(e: React.PointerEvent) {
     const p = norm(e);
-    
+
     if (selectedAnnotation && dragOffset && mode === "none") {
-      setAnnotations(anns => 
-        anns.map(a => 
-          a.id === selectedAnnotation && a.type === "text" 
+      setAnnotations((anns) =>
+        anns.map((a) =>
+          a.id === selectedAnnotation && a.type === "text"
             ? { ...a, x: p.x - dragOffset.x, y: p.y - dragOffset.y }
-            : a
-        )
+            : a,
+        ),
       );
       return;
     }
-    
+
     if (currentStroke) {
       setCurrentStroke((s) => (s ? { ...s, points: [...s.points, p] } : s));
     }
@@ -496,45 +528,43 @@ export default function VideoAnnotator() {
 
   function updateSelectedTextSize(newSize: number) {
     if (!selectedAnnotation) return;
-    setAnnotations(anns =>
-      anns.map(a =>
+    setAnnotations((anns) =>
+      anns.map((a) =>
         a.id === selectedAnnotation && a.type === "text"
           ? { ...a, fontSize: newSize }
-          : a
-      )
+          : a,
+      ),
     );
   }
 
   function updateSelectedText() {
     if (!selectedAnnotation) return;
-    const annotation = annotations.find(a => a.id === selectedAnnotation);
+    const annotation = annotations.find((a) => a.id === selectedAnnotation);
     if (!annotation || annotation.type !== "text") return;
-    
+
     const newText = prompt("Edit text", (annotation as TextNote).text);
     if (newText === null) return;
-    
+
     saveState();
-    setAnnotations(anns =>
-      anns.map(a =>
-        a.id === selectedAnnotation
-          ? { ...a, text: newText }
-          : a
-      )
+    setAnnotations((anns) =>
+      anns.map((a) =>
+        a.id === selectedAnnotation ? { ...a, text: newText } : a,
+      ),
     );
   }
 
   function duplicateAnnotation(id: string) {
-    const annotation = annotations.find(a => a.id === id);
+    const annotation = annotations.find((a) => a.id === id);
     if (!annotation) return;
-    
+
     saveState();
     const duplicate = {
       ...annotation,
       id: uid(annotation.type.charAt(0)),
       timestamp: videoRef.current!.currentTime,
     };
-    
-    setAnnotations(a => [...a, duplicate]);
+
+    setAnnotations((a) => [...a, duplicate]);
     setSelectedAnnotation(duplicate.id);
     setSelectedAnnotations([duplicate.id]);
   }
@@ -551,28 +581,50 @@ export default function VideoAnnotator() {
     });
   }
 
-  const selectedAnnotationData = selectedAnnotation 
-    ? annotations.find(a => a.id === selectedAnnotation) 
+  const selectedAnnotationData = selectedAnnotation
+    ? annotations.find((a) => a.id === selectedAnnotation)
     : null;
 
   return (
     <div style={{ display: "flex", gap: 12 }}>
       <div style={{ flex: 1 }}>
         {/* Main Controls */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={() => fileInputRef.current?.click()}>Load Video</button>
-          <input ref={fileInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={handleFileChange} />
-          
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button onClick={() => fileInputRef.current?.click()}>
+            Load Video
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <button onClick={togglePlayPause} style={{ minWidth: "80px" }}>
               {isPlaying ? "⏸ Pause" : "▶ Play"}
             </button>
             <span style={{ fontSize: "12px", color: "#aaa" }}>
-              {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')} / {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
+              {Math.floor(currentTime / 60)}:
+              {(currentTime % 60).toFixed(1).padStart(4, "0")} /{" "}
+              {Math.floor(duration / 60)}:
+              {(duration % 60).toFixed(0).padStart(2, "0")}
             </span>
           </div>
-          
-          <button onClick={() => setMode(mode === "draw" ? "none" : "draw")} style={{ background: mode === "draw" ? "var(--accent)" : "" }}>
+
+          <button
+            onClick={() => setMode(mode === "draw" ? "none" : "draw")}
+            style={{ background: mode === "draw" ? "var(--accent)" : "" }}
+          >
             ✏️ Draw
           </button>
 
@@ -614,111 +666,136 @@ export default function VideoAnnotator() {
                 boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
               }}
             />
-            <span style={{ fontSize: 12, marginLeft: 5, color: "#666" }}>s</span>
+            <span style={{ fontSize: 12, marginLeft: 5, color: "#666" }}>
+              s
+            </span>
           </div>
 
           <button onClick={addText}>💬 Add Text</button>
-          
+
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+            />
             <label style={{ fontSize: "12px" }}>Brush:</label>
-            <input 
-              type="range" 
-              min={1} 
-              max={10} 
-              value={width} 
-              onChange={(e) => setWidth(Number(e.target.value))} 
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={width}
+              onChange={(e) => setWidth(Number(e.target.value))}
               style={{ width: "60px" }}
             />
             <span style={{ fontSize: "12px" }}>{width}px</span>
           </div>
-          
+
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <label style={{ fontSize: "12px" }}>Font:</label>
-            <input 
-              type="range" 
-              min={12} 
-              max={48} 
-              value={fontSize} 
-              onChange={(e) => setFontSize(Number(e.target.value))} 
+            <input
+              type="range"
+              min={12}
+              max={48}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
               style={{ width: "60px" }}
             />
             <span style={{ fontSize: "12px" }}>{fontSize}px</span>
           </div>
-          
+
           {/* Undo/Redo buttons */}
-          <button 
-            onClick={undo} 
+          <button
+            onClick={undo}
             disabled={undoHistory.length === 0}
             style={{ opacity: undoHistory.length === 0 ? 0.5 : 1 }}
             title="Undo (Ctrl+Z)"
           >
             ↶
           </button>
-          <button 
-            onClick={redo} 
+          <button
+            onClick={redo}
             disabled={redoHistory.length === 0}
             style={{ opacity: redoHistory.length === 0 ? 0.5 : 1 }}
             title="Redo (Ctrl+Y)"
           >
             ↷
           </button>
-          
+
           <button onClick={() => setShowExportPopup(true)}>💾 Export</button>
-          <button onClick={() => importInputRef.current?.click()}>📂 Import</button>
-          <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importJSON} />
-          
+          <button onClick={() => importInputRef.current?.click()}>
+            📂 Import
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            style={{ display: "none" }}
+            onChange={importJSON}
+          />
+
           <SettingsMenu
             volume={volume}
             onVolumeChange={setVolume}
             muted={muted}
-            onMuteToggle={() => setMuted(prev => !prev)}
+            onMuteToggle={() => setMuted((prev) => !prev)}
           />
         </div>
 
         {/* Selected Annotation Controls */}
         {selectedAnnotationData && (
-          <div style={{ 
-            background: "var(--panel)", 
-            border: "1px solid var(--accent)", 
-            borderRadius: "6px", 
-            padding: "8px", 
-            marginBottom: "8px",
-            display: "flex",
-            gap: "8px",
-            alignItems: "center",
-            fontSize: "14px"
-          }}>
+          <div
+            style={{
+              background: "var(--panel)",
+              border: "1px solid var(--accent)",
+              borderRadius: "6px",
+              padding: "8px",
+              marginBottom: "8px",
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              fontSize: "14px",
+            }}
+          >
             <span>Selected: {selectedAnnotationData.type}</span>
             {selectedAnnotationData.type === "text" && (
               <>
-                <button onClick={updateSelectedText} style={{ padding: "2px 6px", fontSize: "12px" }}>
+                <button
+                  onClick={updateSelectedText}
+                  style={{ padding: "2px 6px", fontSize: "12px" }}
+                >
                   ✏️ Edit Text
                 </button>
                 <label style={{ fontSize: "12px" }}>Size:</label>
-                <input 
-                  type="range" 
-                  min={12} 
-                  max={48} 
-                  value={(selectedAnnotationData as TextNote).fontSize || fontSize}
-                  onChange={(e) => updateSelectedTextSize(Number(e.target.value))}
+                <input
+                  type="range"
+                  min={12}
+                  max={48}
+                  value={
+                    (selectedAnnotationData as TextNote).fontSize || fontSize
+                  }
+                  onChange={(e) =>
+                    updateSelectedTextSize(Number(e.target.value))
+                  }
                   style={{ width: "60px" }}
                 />
-                <span style={{ fontSize: "12px" }}>{(selectedAnnotationData as TextNote).fontSize || fontSize}px</span>
+                <span style={{ fontSize: "12px" }}>
+                  {(selectedAnnotationData as TextNote).fontSize || fontSize}px
+                </span>
               </>
             )}
-            <button 
-              onClick={() => duplicateAnnotation(selectedAnnotation!)} 
+            <button
+              onClick={() => duplicateAnnotation(selectedAnnotation!)}
               style={{ padding: "2px 6px", fontSize: "12px" }}
               title="Duplicate (Ctrl+D)"
             >
               📋 Duplicate
             </button>
-            <button 
+            <button
               onClick={() => {
                 setSelectedAnnotation(null);
                 setSelectedAnnotations([]);
-              }} 
+              }}
               style={{ padding: "2px 6px", fontSize: "12px" }}
               title="Deselect (Esc)"
             >
@@ -728,18 +805,30 @@ export default function VideoAnnotator() {
         )}
 
         {/* Video Container */}
-        <div style={{ position: "relative", background: "#000", borderRadius: 8, overflow: "hidden" }}>
-          <video 
-            ref={videoRef} 
+        <div
+          style={{
+            position: "relative",
+            background: "#000",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          <video
+            ref={videoRef}
             style={{ width: "100%", display: "block" }}
             onContextMenu={(e) => e.preventDefault()}
           />
           <canvas
             ref={canvasRef}
-            style={{ 
-              position: "absolute", 
+            style={{
+              position: "absolute",
               inset: 0,
-              cursor: mode === "draw" ? "crosshair" : mode === "text" ? "text" : "default"
+              cursor:
+                mode === "draw"
+                  ? "crosshair"
+                  : mode === "text"
+                    ? "text"
+                    : "default",
             }}
             onPointerDown={down}
             onPointerMove={move}
@@ -749,11 +838,11 @@ export default function VideoAnnotator() {
 
         {/* Enhanced Timeline */}
         <div style={{ marginTop: 12 }}>
-          <Timeline 
-            duration={duration} 
-            current={currentTime} 
-            annotations={annotations} 
-            onSeek={(t) => (videoRef.current!.currentTime = t)} 
+          <Timeline
+            duration={duration}
+            current={currentTime}
+            annotations={annotations}
+            onSeek={(t) => (videoRef.current!.currentTime = t)}
           />
         </div>
       </div>
@@ -764,14 +853,16 @@ export default function VideoAnnotator() {
           Annotations ({annotations.length})
         </div>
         {annotations.map((a) => (
-          <div 
-            key={a.id} 
-            style={{ 
-              marginBottom: 6, 
+          <div
+            key={a.id}
+            style={{
+              marginBottom: 6,
               padding: 4,
-              background: selectedAnnotations.includes(a.id) ? "var(--accent)" : "transparent",
+              background: selectedAnnotations.includes(a.id)
+                ? "var(--accent)"
+                : "transparent",
               borderRadius: 4,
-              cursor: "pointer"
+              cursor: "pointer",
             }}
             onClick={() => {
               const isCurrentlySelected = selectedAnnotations.includes(a.id);
@@ -784,21 +875,32 @@ export default function VideoAnnotator() {
               }
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{a.type} @ {a.timestamp.toFixed(1)}s</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>
+                {a.type} @ {a.timestamp.toFixed(1)}s
+              </span>
               <div style={{ display: "flex", gap: 2 }}>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); videoRef.current!.currentTime = a.timestamp; }}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    videoRef.current!.currentTime = a.timestamp;
+                  }}
                   style={{ padding: "2px 4px", fontSize: "10px" }}
                   title="Go to timestamp"
                 >
                   ⏯
                 </button>
-                <button 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     saveState();
-                    setAnnotations((anns) => anns.filter((x) => x.id !== a.id)); 
+                    setAnnotations((anns) => anns.filter((x) => x.id !== a.id));
                     if (selectedAnnotation === a.id) {
                       setSelectedAnnotation(null);
                       setSelectedAnnotations([]);

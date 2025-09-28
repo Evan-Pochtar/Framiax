@@ -8,7 +8,12 @@ type Props = {
   annotations: Annotation[];
 };
 
-export default function Timeline({ duration, current, onSeek, annotations }: Props) {
+export default function Timeline({
+  duration,
+  current,
+  onSeek,
+  annotations,
+}: Props) {
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
@@ -19,9 +24,15 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     const previewTime = duration * ratio;
-    
-    e.currentTarget.style.setProperty('--preview-time', `"${Math.floor(previewTime / 60)}:${(previewTime % 60).toFixed(1).padStart(4, '0')}"`);
-    e.currentTarget.style.setProperty('--preview-left', `${e.clientX - rect.left}px`);
+
+    e.currentTarget.style.setProperty(
+      "--preview-time",
+      `"${Math.floor(previewTime / 60)}:${(previewTime % 60).toFixed(1).padStart(4, "0")}"`,
+    );
+    e.currentTarget.style.setProperty(
+      "--preview-left",
+      `${e.clientX - rect.left}px`,
+    );
   };
 
   const percent = (current / duration) * 100 || 0;
@@ -29,11 +40,21 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       {/* Time Labels */}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#888" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "12px",
+          color: "#888",
+        }}
+      >
         <span>0:00</span>
-        <span>{Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}</span>
+        <span>
+          {Math.floor(duration / 60)}:
+          {(duration % 60).toFixed(0).padStart(2, "0")}
+        </span>
       </div>
-      
+
       {/* Main Timeline */}
       <div
         style={{
@@ -47,7 +68,9 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
         }}
         onClick={handleClick}
         onMouseMove={handleMouseMove}
-        onMouseLeave={(e) => e.currentTarget.style.removeProperty('--preview-time')}
+        onMouseLeave={(e) =>
+          e.currentTarget.style.removeProperty("--preview-time")
+        }
       >
         {/* Annotation Highlights */}
         {annotations.map((a) => {
@@ -72,7 +95,7 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
             />
           );
         })}
-        
+
         {/* Progress Bar */}
         <div
           style={{
@@ -87,7 +110,7 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
             zIndex: 1,
           }}
         />
-        
+
         {/* Progress Handle */}
         <div
           style={{
@@ -104,7 +127,7 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
             pointerEvents: "none",
           }}
         />
-        
+
         {/* Hover Preview */}
         <div
           style={{
@@ -126,31 +149,31 @@ export default function Timeline({ duration, current, onSeek, annotations }: Pro
           {/* Content will be set via CSS custom property */}
         </div>
       </div>
-      
+
       {/* Quick Navigation */}
       <div style={{ display: "flex", justifyContent: "center", gap: "4px" }}>
-        <button 
+        <button
           onClick={() => onSeek(Math.max(0, current - 10))}
           style={{ padding: "2px 6px", fontSize: "12px" }}
           title="Back 10s"
         >
           ⏪
         </button>
-        <button 
+        <button
           onClick={() => onSeek(Math.max(0, current - 1))}
           style={{ padding: "2px 6px", fontSize: "12px" }}
           title="Back 1s"
         >
           ⏮
         </button>
-        <button 
+        <button
           onClick={() => onSeek(Math.min(duration, current + 1))}
           style={{ padding: "2px 6px", fontSize: "12px" }}
           title="Forward 1s"
         >
           ⏭
         </button>
-        <button 
+        <button
           onClick={() => onSeek(Math.min(duration, current + 10))}
           style={{ padding: "2px 6px", fontSize: "12px" }}
           title="Forward 10s"

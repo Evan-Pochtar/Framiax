@@ -29,3 +29,25 @@ export type ExportPayload = {
   videoUrl: string | null;
   annotations: Annotation[];
 };
+
+export type Props = {
+  duration: number;
+  current: number;
+  onSeek: (t: number) => void;
+  annotations: Annotation[];
+};
+
+export interface ExportPopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  annotations: Annotation[];
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  fontSize: number;
+}
+
+export type SettingsMenuProps = {
+  volume: number;
+  onVolumeChange: (volume: number) => void;
+  muted: boolean;
+  onMuteToggle: () => void;
+};

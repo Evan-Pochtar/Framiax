@@ -1,13 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Annotation, TextNote, ExportPayload } from "../types";
-
-interface ExportPopupProps {
-  isOpen: boolean;
-  onClose: () => void;
-  annotations: Annotation[];
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  fontSize: number;
-}
+import { useState, useRef } from "react";
+import { TextNote, ExportPayload, ExportPopupProps } from "../types";
 
 export default function ExportPopup({
   isOpen,
@@ -93,17 +85,13 @@ export default function ExportPopup({
       const canvas = canvasRef.current!;
       const ctx = canvas.getContext("2d")!;
 
-      // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
-      // Create MediaRecorder stream
-      const stream = canvas.captureStream(30); // 30 fps
+      const stream = canvas.captureStream(60);
 
-      // Get audio track from video
       let audioStream: MediaStream | null = null;
       try {
-        // Create audio context to capture audio
         const audioContext = new AudioContext();
         const source = audioContext.createMediaElementSource(video);
         const destination = audioContext.createMediaStreamDestination();
@@ -111,7 +99,6 @@ export default function ExportPopup({
         source.connect(audioContext.destination);
         audioStream = destination.stream;
 
-        // Add audio track to stream
         if (audioStream.getAudioTracks().length > 0) {
           audioStream.getAudioTracks().forEach((track) => {
             stream.addTrack(track);
@@ -145,32 +132,20 @@ export default function ExportPopup({
         onClose();
       };
 
-      // Start recording
       mediaRecorder.start();
 
-      // Reset video to beginning
       video.currentTime = 0;
       const originalPlaybackRate = video.playbackRate;
-      video.playbackRate = 1; // Ensure normal playback speed
+      video.playbackRate = 1;
 
-      // Function to render frame
       const renderFrame = () => {
         if (!video.paused && !video.ended) {
-          // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          // Draw video frame
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          // Draw annotations
           renderAnnotationsOnCanvas(ctx, canvas, video.currentTime);
-
-          // Update progress
           setExportProgress((video.currentTime / video.duration) * 100);
-
           requestAnimationFrame(renderFrame);
         } else if (video.ended) {
-          // Stop recording when video ends
           mediaRecorder.stop();
           video.playbackRate = originalPlaybackRate;
           if (audioStream) {
@@ -179,7 +154,6 @@ export default function ExportPopup({
         }
       };
 
-      // Start playback and rendering
       video.play();
       renderFrame();
     } catch (error) {

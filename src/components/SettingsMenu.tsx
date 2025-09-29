@@ -1,11 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-
-type SettingsMenuProps = {
-  volume: number;
-  onVolumeChange: (volume: number) => void;
-  muted: boolean;
-  onMuteToggle: () => void;
-};
+import { SettingsMenuProps } from "../types";
 
 export default function SettingsMenu({
   volume,

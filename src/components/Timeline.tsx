@@ -1,12 +1,5 @@
 import React from "react";
-import { Annotation } from "../types";
-
-type Props = {
-  duration: number;
-  current: number;
-  onSeek: (t: number) => void;
-  annotations: Annotation[];
-};
+import { Props } from "../types";
 
 export default function Timeline({
   duration,
@@ -145,9 +138,7 @@ export default function Timeline({
             transition: "opacity 0.2s ease",
             whiteSpace: "nowrap",
           }}
-        >
-          {/* Content will be set via CSS custom property */}
-        </div>
+        ></div>
       </div>
 
       {/* Quick Navigation */}
